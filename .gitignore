@@ -1,0 +1,7 @@
+assets/
+*.png
+*.jpg
+yolo-env/
+__pycache__/
+*.pt
+*.onnx
