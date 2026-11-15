@@ -107,7 +107,17 @@ _JS_EMPTY = """() => {
   return JSON.stringify({empty, un});
 }"""
 
-_JS_READY = "() => window.app && window.app.board && window.app.board.pieces.length > 0"
+# 新局就绪：块数必须等于目标难度、棋盘尺寸对应、且状态已归零。
+# 只判断"棋盘存在"会拿到上一关的旧棋盘（难度 9 的关导出成 4 块就是这么来的）。
+_JS_READY = """(diff) => {
+  const b = window.app && window.app.board;
+  if (!b || !b.pieces) return false;
+  const n = b.pieces.length;
+  return n === diff
+      && b.rows * b.cols === diff
+      && (b.placedCount || 0) === 0
+      && (b.moveCount || 0) === 0;
+}"""
 
 
 # ---------------------------------------------------------------- 录屏依赖
@@ -243,14 +253,28 @@ class PuzzleDriver:
     def close_modal(self):
         return self.page.evaluate(_JS_CLOSE_MODAL)
 
-    def start(self, part, difficulty, timeout=20000):
-        """关闭上一局弹窗 → 选 Part/难度 → 开始新局。"""
-        self.close_modal()
-        time.sleep(0.5)
-        self.page.evaluate(_JS_START, [part, difficulty])
-        self.page.wait_for_function(_JS_READY, timeout=timeout)
-        time.sleep(0.6)
-        return self.state()
+    def start(self, part, difficulty, timeout=25000, retries=3):
+        """关闭上一局弹窗 → 选 Part/难度 → 开新局，并确认棋盘已换成该难度。
+
+        必须校验块数：仅判断「棋盘存在」会拿到上一关的旧棋盘，
+        导致难度 9 的关导出成 4 块这类错位。
+        """
+        last = None
+        for attempt in range(retries):
+            self.close_modal()
+            time.sleep(0.4 + 0.3 * attempt)
+            self.page.evaluate(_JS_START, [part, difficulty])
+            try:
+                self.page.wait_for_function(_JS_READY, arg=difficulty, timeout=timeout)
+            except Exception as e:
+                last = e
+                continue
+            time.sleep(0.4)
+            st = self.state()
+            if st.get("total") == difficulty:
+                return st
+            last = RuntimeError(f"棋盘块数 {st.get('total')} != 难度 {difficulty}")
+        raise RuntimeError(f"开新局失败（Part {part} · {difficulty} 块）：{last}")
 
     def state(self):
         return json.loads(self.page.evaluate(_JS_STATE))
@@ -262,7 +286,7 @@ class PuzzleDriver:
 
     # -- 导出 --
 
-    def export(self, outdir, shuffle=True, seed=None):
+    def export(self, outdir, shuffle=True, seed=None, expect_n=None):
         """导出拼图块 + 参考图 + 几何信息。
 
         返回 {"n", "theme", "geom", "perm"}；perm 只在 shuffle=True 时非空。
@@ -276,6 +300,8 @@ class PuzzleDriver:
         data = json.loads(self.page.evaluate(_JS_EXPORT))
         pieces, geom = data["pieces"], data["geom"]
         n = len(pieces)
+        if expect_n is not None and n != expect_n:
+            raise RuntimeError(f"导出块数 {n} != 期望 {expect_n}，棋盘可能还是上一关的")
 
         (out / "geom.json").write_text(json.dumps(geom, indent=1))
         (out / "reference.jpg").write_bytes(

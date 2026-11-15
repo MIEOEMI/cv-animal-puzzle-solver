@@ -162,6 +162,26 @@ python browser_driver.py run    --part 1 --diff 16 --out ./assets        # 导�
 
 ---
 
+## 六、坑：开新局必须校验块数（已修）
+
+**症状**：难度 9 的关导出成 4 块、难度 16 的关导出成 9 块，求解器返回 `None`、一次吸附 0/N。
+
+**原因**：开新局后只等「棋盘存在」，但上一关的棋盘一直存在，导出就导早了 —— 每关都拿到上一关的棋盘。
+
+**修法**：`PuzzleDriver.start()` 现在等到下面四条同时成立，并且最多重试 3 次：
+
+```js
+b.pieces.length === 目标难度      // 块数对得上
+b.rows * b.cols === 目标难度      // 棋盘尺寸对得上
+b.placedCount === 0              // 状态已归零
+b.moveCount === 0
+```
+
+`export(expect_n=...)` 还会再校验一次导出的块数，不符直接抛错，不会带着错数据继续跑。
+
+同时 `auto_run.py` 里那套重复的 start/export/drag 已删除，统一改走 `browser_driver.PuzzleDriver`，
+避免两处逻辑分叉后再踩同一个坑。
+
 ## 六、口径（重要）
 
 1. **不读答案键**。`piece.id`（=正确行列）、`piece.correctX/correctY` 一律不用。
@@ -174,7 +194,7 @@ python browser_driver.py run    --part 1 --diff 16 --out ./assets        # 导�
 
 ---
 
-## 七、已知限制
+## 八、已知限制
 
 | 限制 | 说明 |
 |---|---|
@@ -195,7 +215,7 @@ python browser_driver.py run    --part 1 --diff 16 --out ./assets        # 导�
 
 ---
 
-## 八、实测成绩（2026-11-15）
+## 九、实测成绩（2026-11-15）
 
 12 关全部完成。照片主题 25 块已做到一次吸附 25/25；纯白 25 块受方法上限影响约 22/25，
 靠排除法兜底后仍能完成。
@@ -204,7 +224,7 @@ python browser_driver.py run    --part 1 --diff 16 --out ./assets        # 导�
 
 ---
 
-## 九、环境事实
+## 十、环境事实
 
 | 项 | 值 |
 |---|---|

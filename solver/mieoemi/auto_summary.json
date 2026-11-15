@@ -13,11 +13,13 @@
   "isWon": true,
   "sec": 1,
   "moves": 4,
-  "screenshot": "/tmp/final12/shots/p1_d4.png",
-  "wall_sec": 2.06,
+  "rows": 2,
+  "cols": 2,
+  "screenshot": "/tmp/fix12/shots/p1_d4.png",
+  "wall_sec": 1.87,
   "final_placed": 4,
   "final_won": true,
-  "pause_after": 30.0
+  "pause_after": 2.0
  },
  {
   "tag": "p1_d9",
@@ -33,11 +35,13 @@
   "isWon": true,
   "sec": 1,
   "moves": 9,
-  "screenshot": "/tmp/final12/shots/p1_d9.png",
-  "wall_sec": 2.77,
+  "rows": 3,
+  "cols": 3,
+  "screenshot": "/tmp/fix12/shots/p1_d9.png",
+  "wall_sec": 2.41,
   "final_placed": 9,
   "final_won": true,
-  "pause_after": 30.0
+  "pause_after": 2.0
  },
  {
   "tag": "p1_d16",
@@ -51,13 +55,15 @@
   "placed": 16,
   "total": 16,
   "isWon": true,
-  "sec": 3,
+  "sec": 2,
   "moves": 16,
-  "screenshot": "/tmp/final12/shots/p1_d16.png",
-  "wall_sec": 4.57,
+  "rows": 4,
+  "cols": 4,
+  "screenshot": "/tmp/fix12/shots/p1_d16.png",
+  "wall_sec": 3.33,
   "final_placed": 16,
   "final_won": true,
-  "pause_after": 30.0
+  "pause_after": 2.0
  },
  {
   "tag": "p1_d25",
@@ -67,24 +73,19 @@
   "n": 25,
   "solver": "hybrid_solver.py",
   "plan_size": 25,
-  "first_try_snapped": 23,
-  "placed": 23,
+  "first_try_snapped": 25,
+  "placed": 25,
   "total": 25,
-  "isWon": false,
-  "sec": 3,
+  "isWon": true,
+  "sec": 4,
   "moves": 25,
-  "after_fallback": {
-   "placed": 25,
-   "total": 25,
-   "isWon": true,
-   "sec": 3,
-   "moves": 27
-  },
-  "screenshot": "/tmp/final12/shots/p1_d25.png",
-  "wall_sec": 4.72,
+  "rows": 5,
+  "cols": 5,
+  "screenshot": "/tmp/fix12/shots/p1_d25.png",
+  "wall_sec": 4.92,
   "final_placed": 25,
   "final_won": true,
-  "pause_after": 30.0
+  "pause_after": 2.0
  },
  {
   "tag": "p2_d4",
@@ -98,13 +99,15 @@
   "placed": 4,
   "total": 4,
   "isWon": true,
-  "sec": 1,
+  "sec": 0,
   "moves": 4,
-  "screenshot": "/tmp/final12/shots/p2_d4.png",
-  "wall_sec": 1.9,
+  "rows": 2,
+  "cols": 2,
+  "screenshot": "/tmp/fix12/shots/p2_d4.png",
+  "wall_sec": 1.59,
   "final_placed": 4,
   "final_won": true,
-  "pause_after": 30.0
+  "pause_after": 2.0
  },
  {
   "tag": "p2_d9",
@@ -120,11 +123,13 @@
   "isWon": true,
   "sec": 1,
   "moves": 9,
-  "screenshot": "/tmp/final12/shots/p2_d9.png",
-  "wall_sec": 2.45,
+  "rows": 3,
+  "cols": 3,
+  "screenshot": "/tmp/fix12/shots/p2_d9.png",
+  "wall_sec": 2.14,
   "final_placed": 9,
   "final_won": true,
-  "pause_after": 30.0
+  "pause_after": 2.0
  },
  {
   "tag": "p2_d16",
@@ -134,17 +139,28 @@
   "n": 16,
   "solver": "hybrid_solver.py",
   "plan_size": 16,
-  "first_try_snapped": 16,
-  "placed": 16,
+  "first_try_snapped": 12,
+  "placed": 12,
   "total": 16,
-  "isWon": true,
+  "isWon": false,
   "sec": 2,
   "moves": 16,
-  "screenshot": "/tmp/final12/shots/p2_d16.png",
-  "wall_sec": 3.2,
+  "rows": 4,
+  "cols": 4,
+  "after_fallback": {
+   "placed": 16,
+   "total": 16,
+   "isWon": true,
+   "sec": 2,
+   "moves": 20,
+   "rows": 4,
+   "cols": 4
+  },
+  "screenshot": "/tmp/fix12/shots/p2_d16.png",
+  "wall_sec": 2.93,
   "final_placed": 16,
   "final_won": true,
-  "pause_after": 30.0
+  "pause_after": 2.0
  },
  {
   "tag": "p2_d25",
@@ -154,24 +170,28 @@
   "n": 25,
   "solver": "hybrid_solver.py",
   "plan_size": 25,
-  "first_try_snapped": 17,
-  "placed": 17,
+  "first_try_snapped": 21,
+  "placed": 21,
   "total": 25,
   "isWon": false,
   "sec": 3,
   "moves": 25,
+  "rows": 5,
+  "cols": 5,
   "after_fallback": {
    "placed": 25,
    "total": 25,
    "isWon": true,
    "sec": 3,
-   "moves": 33
+   "moves": 29,
+   "rows": 5,
+   "cols": 5
   },
-  "screenshot": "/tmp/final12/shots/p2_d25.png",
-  "wall_sec": 4.23,
+  "screenshot": "/tmp/fix12/shots/p2_d25.png",
+  "wall_sec": 3.89,
   "final_placed": 25,
   "final_won": true,
-  "pause_after": 30.0
+  "pause_after": 2.0
  },
  {
   "tag": "p3_d4",
@@ -187,11 +207,13 @@
   "isWon": true,
   "sec": 1,
   "moves": 4,
-  "screenshot": "/tmp/final12/shots/p3_d4.png",
-  "wall_sec": 2.13,
+  "rows": 2,
+  "cols": 2,
+  "screenshot": "/tmp/fix12/shots/p3_d4.png",
+  "wall_sec": 1.92,
   "final_placed": 4,
   "final_won": true,
-  "pause_after": 30.0
+  "pause_after": 2.0
  },
  {
   "tag": "p3_d9",
@@ -207,11 +229,13 @@
   "isWon": true,
   "sec": 1,
   "moves": 9,
-  "screenshot": "/tmp/final12/shots/p3_d9.png",
-  "wall_sec": 2.58,
+  "rows": 3,
+  "cols": 3,
+  "screenshot": "/tmp/fix12/shots/p3_d9.png",
+  "wall_sec": 2.72,
   "final_placed": 9,
   "final_won": true,
-  "pause_after": 30.0
+  "pause_after": 2.0
  },
  {
   "tag": "p3_d16",
@@ -227,11 +251,13 @@
   "isWon": true,
   "sec": 2,
   "moves": 16,
-  "screenshot": "/tmp/final12/shots/p3_d16.png",
-  "wall_sec": 3.4,
+  "rows": 4,
+  "cols": 4,
+  "screenshot": "/tmp/fix12/shots/p3_d16.png",
+  "wall_sec": 3.33,
   "final_placed": 16,
   "final_won": true,
-  "pause_after": 30.0
+  "pause_after": 2.0
  },
  {
   "tag": "p3_d25",
@@ -241,21 +267,16 @@
   "n": 25,
   "solver": "hybrid_solver.py",
   "plan_size": 25,
-  "first_try_snapped": 23,
-  "placed": 23,
+  "first_try_snapped": 25,
+  "placed": 25,
   "total": 25,
-  "isWon": false,
+  "isWon": true,
   "sec": 4,
   "moves": 25,
-  "after_fallback": {
-   "placed": 25,
-   "total": 25,
-   "isWon": true,
-   "sec": 4,
-   "moves": 27
-  },
-  "screenshot": "/tmp/final12/shots/p3_d25.png",
-  "wall_sec": 4.83,
+  "rows": 5,
+  "cols": 5,
+  "screenshot": "/tmp/fix12/shots/p3_d25.png",
+  "wall_sec": 4.82,
   "final_placed": 25,
   "final_won": true
  }
