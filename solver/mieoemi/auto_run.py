@@ -26,6 +26,9 @@ from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from browser_driver import ensure_ffmpeg  # noqa: E402
+
 URL = "https://f27e491f.cv-animal-puzzle.pages.dev/?mode=exam"
 HERE = Path(__file__).resolve().parent
 PY = sys.executable
@@ -214,6 +217,9 @@ def main():
     outdir, shots = root / "assets", root / "shots"
     (outdir).mkdir(parents=True, exist_ok=True)
     shots.mkdir(parents=True, exist_ok=True)
+
+    if a.video:
+        ensure_ffmpeg(verbose=True)
 
     with sync_playwright() as p:
         browser = p.chromium.launch(channel="chrome", headless=a.headless, slow_mo=a.slowmo,

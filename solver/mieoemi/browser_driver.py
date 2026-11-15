@@ -110,6 +110,62 @@ _JS_EMPTY = """() => {
 _JS_READY = "() => window.app && window.app.board && window.app.board.pieces.length > 0"
 
 
+# ---------------------------------------------------------------- 录屏依赖
+
+def ensure_ffmpeg(verbose=True):
+    """确保 Playwright 录屏所需的 ffmpeg 存在；缺了就软链系统 ffmpeg。
+
+    Playwright 要求 <PLAYWRIGHT_BROWSERS_PATH>/ffmpeg-<revision>/ffmpeg-linux，
+    但它不自带该二进制时不会自动找系统 ffmpeg。这里直接从 browsers.json 读出
+    revision，把 `which ffmpeg` 软链过去，免去 `playwright install ffmpeg` 的下载。
+    返回可用路径或 None。
+    """
+    import json as _json
+    import os as _os
+    import shutil as _shutil
+
+    if _os.environ.get("PLAYWRIGHT_SKIP_VERIFY") == "1":
+        return None
+    try:
+        import playwright as _pw_pkg
+    except ImportError:
+        return None
+
+    base = _os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
+    if not base:
+        base = str(Path(_pw_pkg.__file__).parent / "driver" / "package" / ".local-browsers")
+    bjson = Path(_pw_pkg.__file__).parent / "driver" / "package" / "browsers.json"
+    rev = None
+    try:
+        for b in _json.loads(bjson.read_text()).get("browsers", []):
+            if b.get("name") == "ffmpeg":
+                rev = b.get("revision")
+                break
+    except Exception:
+        pass
+    if not rev:
+        return None
+
+    target = Path(str(base)) / f"ffmpeg-{rev}" / "ffmpeg-linux"
+    if target.exists():
+        return str(target)
+    src = _shutil.which("ffmpeg")
+    if not src:
+        if verbose:
+            print("[warn] 录屏需要 ffmpeg，但系统里也没有；请先安装 ffmpeg")
+        return None
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.symlink_to(src)
+        if verbose:
+            print(f"[info] 已软链 ffmpeg: {target} -> {src}")
+        return str(target)
+    except Exception as e:
+        if verbose:
+            print(f"[warn] 软链 ffmpeg 失败: {e}")
+        return None
+
+
 # ---------------------------------------------------------------- 驱动类
 
 class PuzzleDriver:
@@ -139,6 +195,8 @@ class PuzzleDriver:
 
     def launch(self):
         from playwright.sync_api import sync_playwright
+        if self.video_dir:
+            ensure_ffmpeg(verbose=True)
         self._pw = sync_playwright().start()
         self._browser = self._pw.chromium.launch(
             channel=self.channel, headless=self.headless, slow_mo=self.slowmo,
