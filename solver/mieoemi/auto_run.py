@@ -143,10 +143,10 @@ def norm_plan(path):
     return out
 
 
-def solve_assets(assets: Path, theme: str):
-    """跑求解器，返回 (plan_pNN, solver_name)。white/mixed 先边齿，photo 先模板匹配。"""
-    # hybrid 先跑（边齿约束 + 像素排序），失败再退到单一边齿
-    order = ["hybrid_solver.py", "edge_solver.py"]
+def solve_assets(assets: Path, theme: str, force=None):
+    """跑求解器，返回 (plan_pNN, solver_name)。force 指定则只用该求解器。"""
+    # 默认 hybrid 先跑（边齿约束 + 像素排序），失败再退到单一边齿
+    order = [force] if force else ["hybrid_solver.py", "edge_solver.py"]
     best, used = {}, None
     for s in order:
         subprocess.run([PY, str(HERE / s), "--assets", str(assets)],
@@ -161,7 +161,7 @@ def solve_assets(assets: Path, theme: str):
     return best, used
 
 
-def run_one(page, part, diff, outdir: Path, shots: Path, seed=None):
+def run_one(page, part, diff, outdir: Path, shots: Path, seed=None, solver=None):
     tag = f"p{part}_d{diff}"
     A = outdir / tag
     if A.exists():
@@ -190,7 +190,7 @@ def run_one(page, part, diff, outdir: Path, shots: Path, seed=None):
             base64.b64decode(pieces[i]["dataUrl"].split(",", 1)[1]))
     json.dump({k: v for k, v in perm.items()}, open(A / "perm.json", "w"), indent=1)
 
-    plan, solver = solve_assets(A, theme)
+    plan, used_solver = solve_assets(A, theme, force=solver)
 
     page.evaluate(FREEZE_REFS_JS)
     ok = 0
@@ -207,7 +207,7 @@ def run_one(page, part, diff, outdir: Path, shots: Path, seed=None):
 
     st = json.loads(page.evaluate(STATE_JS))
     rec = {"tag": tag, "part": part, "difficulty": diff, "theme": theme, "n": n,
-           "solver": solver, "plan_size": len(plan), "first_try_snapped": ok, **st}
+           "solver": used_solver, "plan_size": len(plan), "first_try_snapped": ok, **st}
 
     # 排除法兜底：剩余块 → 剩余格（吸附即正确）
     if not st["isWon"]:
@@ -240,6 +240,9 @@ def main():
                     help="每关之间的等待秒数，支持区间如 20-45（默认 30）；0 表示不留间隔")
     ap.add_argument("--video", action="store_true", help="录屏（WebM），便于回看浏览器操作过程")
     ap.add_argument("--slowmo", type=int, default=0, help="每步放慢毫秒数，便于肉眼观察")
+    ap.add_argument("--solver", default=None,
+                    help="指定求解器（hybrid_solver.py / edge_solver.py / match_solver.py），"
+                         "默认 hybrid 优先、失败退 edge")
     a = ap.parse_args()
 
     parts = [int(x) for x in (a.only.split(",") if a.only else ["1", "2", "3"])]
@@ -278,7 +281,7 @@ def main():
         recs = []
         for i, (part, diff) in enumerate(combos):
             t0 = time.time()
-            rec = run_one(page, part, diff, outdir, shots, seed=a.seed)
+            rec = run_one(page, part, diff, outdir, shots, seed=a.seed, solver=a.solver)
             rec["wall_sec"] = round(time.time() - t0, 2)
             # 最终状态以兜底后为准
             fin = rec.get("after_fallback", rec)
