@@ -9,6 +9,15 @@ RoboMaster 队内 CV 练习：自动解 `cv-animal-puzzle` 拼图。
 - **Part 2 · Pure White Shapes** —— 核心方法 OpenCV：纯轮廓/直边/凹凸齿匹配
 - **Part 3 · Mixed** —— 两者结合
 
+## 目录分工（两人分开写，互不覆盖）
+
+```
+solver/hermes/    我的实现（YOLO + NCC 双路线）
+solver/partner/   你的实现（自己建文件）
+notes/            公共笔记，文件名带前缀防冲突
+assets/           导出素材（不入库）
+```
+
 ## 结构
 
 ```
