@@ -104,7 +104,7 @@ torch CPU wheel 直连 `download.pytorch.org` 可用（约 167MB）。
 
 结果落在 `--out` 目录：`shots/*.png` 每局截图、`RESULTS.md` 总表、`summary.json` 原始数据。
 
-**默认一关一关来**：每完成一局，先休息 30 秒再开下一局（可用 `--pause` 调整，如 `--pause 45` 或 `--pause 20-60` 随机）。
+**默认一关一关来**：每完成一局，先休息 5 秒再开下一局（可用 `--pause` 调整，如 `--pause 10` 或 `--pause 3-8` 随机）。
 输出里有倒计时，`summary.json` 的 `pause_after` 记录每关实际等待秒数。
 
 | 参数 | 说明 |
@@ -113,7 +113,7 @@ torch CPU wheel 直连 `download.pytorch.org` 可用（约 167MB）。
 | `--headless` | 无窗口，仅适合无显示器的服务器 |
 | `--slowmo 60` | 每步放慢毫秒数，让操作看得更清楚 |
 | `--video` | 可选录屏（不需要就别加） |
-| `--pause 30` | **每关之间等待秒数**，默认 30；支持区间 `20-45` 随机；`0` 表示连跑不停 |
+| `--pause 30` | **每关之间等待秒数**，默认 5；支持区间 `3-8` 随机；`0` 表示连跑不停 |
 
 > 服务器无显示器时可用 `xvfb-run -a ./yolo-env/bin/python ...` 模拟桌面；
 > 若要录屏而 Playwright 缺 ffmpeg，脚本会自动把系统 ffmpeg 软链过去，无需手工处理。

@@ -16,7 +16,7 @@ python3 -m venv yolo-env
     playwright opencv-python-headless pillow numpy
 # 浏览器用系统 Chrome，不需要 playwright install chromium
 
-# 1) 一条命令跑完 12 关（会弹出浏览器窗口，每关之间停 30 秒）
+# 1) 一条命令跑完 12 关（会弹出浏览器窗口，每关之间停 5 秒）
 ./yolo-env/bin/python auto_run.py --out ./runs/demo
 
 # 2) 只跑关（看过程最清楚）
@@ -66,14 +66,14 @@ python3 -m venv yolo-env
 | `--out DIR` | `runs/<时间戳>` | 输出目录 |
 | `--only 1,2` | 全部 | 只跑指定 Part（1/2/3） |
 | `--diff 4,9,16,25` | `4,9,16,25` | 难度（块数） |
-| `--pause 30` | `30` | **每关之间等待秒数**；支持区间 `20-45`；`0` = 连跑不停 |
+| `--pause 5` | `5` | **每关之间等待秒数**；支持区间 `3-8`；`0` = 连跑不停 |
 | `--solver X.py` | 自动 | 指定求解器（默认 hybrid → edge 回退） |
 | `--headless` | 关 | 不显示浏览器窗口（服务器用） |
 | `--slowmo 60` | `0` | 每步放慢毫秒数，肉眼看得更清楚 |
 | `--video` | 关 | 录屏（不需要就别加） |
 | `--seed N` | 随机 | 固定文件名置换种子，便于复现 |
 
-**默认一关一关来**：每局完成后先休息（默认 30 秒）再开下一局，输出带倒计时，
+**默认一关一关来**：每局完成后先休息（默认 5 秒）再开下一局，输出带倒计时，
 `summary.json` 里 `pause_after` 记录每关实际等待秒数。
 
 ### 输出目录结构

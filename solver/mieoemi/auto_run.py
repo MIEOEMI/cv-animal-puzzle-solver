@@ -4,7 +4,7 @@
 默认行为
 --------
 * **弹出可见的浏览器窗口**（不加 --headless 就是有头模式）
-* **一关一关来**：每局完成后休息 --pause 秒（默认 30）再开下一关
+* **一关一关来**：每局完成后休息 --pause 秒（默认 5）再开下一关
 * 不录屏（需要时加 --video）
 
 用法
@@ -138,8 +138,8 @@ def main():
     ap.add_argument("--only", default=None, help="逗号分隔 Part，如 1,2")
     ap.add_argument("--diff", default="4,9,16,25", help="难度（块数），逗号分隔")
     ap.add_argument("--out", default=None, help="输出目录（默认 runs/<时间戳>）")
-    ap.add_argument("--pause", default="30",
-                    help="每关之间等待秒数，支持区间如 20-45（默认 30）；0 表示连跑")
+    ap.add_argument("--pause", default="5",
+                    help="每关之间等待秒数（默认 5）；支持区间如 3-8；0 表示连跑")
     ap.add_argument("--solver", default=None,
                     help="指定求解器（hybrid_solver.py / edge_solver.py / match_solver.py），"
                          "默认 hybrid 优先、失败退 edge")
