@@ -87,7 +87,7 @@ for r in range(rows):
         crop = ref_rgb.crop((int(c * cell_w), int(r * cell_h),
                              int((c + 1) * cell_w), int((r + 1) * cell_h)))
         d = detect(crop)
-        cells.append({"r": r, "c": c, "cls": d[0] if d else None, "sig": sig(crop)})
+        cells.append({"r": int(r), "c": int(c), "cls": d[0] if d else None, "sig": sig(crop)})
 
 plan = {}
 used = set()
@@ -111,7 +111,7 @@ for p in sorted(A.glob("piece_*.png")):
             best_s, best_i = s, i
 
     # 路线 B：滑窗 NCC
-    tpl = crop_opaque(im).convert("L").resize((int(cell_w), int(cell_h)), Image.BILINEAR)
+    tpl = crop_opaque(im).convert("L").resize((int(cell_w), int(cell_h)), Image.Resampling.BILINEAR)
     tpl_arr = np.asarray(tpl, dtype=np.float32) / 255.0
     _, x, y = slide_ncc(ref_gray, tpl_arr, stride=3)
     bx = min(cols - 1, int((x + tpl.size[0] / 2) / cell_w))
@@ -121,7 +121,7 @@ for p in sorted(A.glob("piece_*.png")):
     agree = (best_i == ncc_i)
     final = best_i if agree else best_i  # 不一致时以类别+颜色为准，见 README
     used.add(final)
-    plan[p.name] = {"row": cells[final]["r"], "col": cells[final]["c"],
+    plan[p.name] = {"row": int(cells[final]["r"]), "col": int(cells[final]["c"]),
                     "via": via, "agree": agree,
                     "ncc_cell": [by, bx]}
     print(f"{p.name}: cls={d[0] if d else None} -> ({cells[final]['r']},{cells[final]['c']}) "
