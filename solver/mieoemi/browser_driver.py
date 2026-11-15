@@ -121,15 +121,15 @@ _JS_READY = """(diff) => {
 
 
 # ---------------------------------------------------------------- 录屏依赖
-
+"""
 def ensure_ffmpeg(verbose=True):
-    """确保 Playwright 录屏所需的 ffmpeg 存在；缺了就软链系统 ffmpeg。
+    #确保 Playwright 录屏所需的 ffmpeg 存在；缺了就软链系统 ffmpeg。
 
-    Playwright 要求 <PLAYWRIGHT_BROWSERS_PATH>/ffmpeg-<revision>/ffmpeg-linux，
-    但它不自带该二进制时不会自动找系统 ffmpeg。这里直接从 browsers.json 读出
-    revision，把 `which ffmpeg` 软链过去，免去 `playwright install ffmpeg` 的下载。
-    返回可用路径或 None。
-    """
+    #Playwright 要求 <PLAYWRIGHT_BROWSERS_PATH>/ffmpeg-<revision>/ffmpeg-linux，
+    #但它不自带该二进制时不会自动找系统 ffmpeg。这里直接从 browsers.json 读出
+    #revision，把 `which ffmpeg` 软链过去，免去 `playwright install ffmpeg` 的下载。
+    #返回可用路径或 None。
+    #
     import json as _json
     import os as _os
     import shutil as _shutil
@@ -174,7 +174,7 @@ def ensure_ffmpeg(verbose=True):
         if verbose:
             print(f"[warn] 软链 ffmpeg 失败: {e}")
         return None
-
+"""
 
 # ---------------------------------------------------------------- 驱动类
 
