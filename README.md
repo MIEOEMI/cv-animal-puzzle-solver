@@ -9,15 +9,6 @@ RoboMaster 队内 CV 练习：自动解 `cv-animal-puzzle` 拼图。
 - **Part 2 · Pure White Shapes** —— 核心方法 OpenCV：纯轮廓/直边/凹凸齿匹配
 - **Part 3 · Mixed** —— 两者结合
 
-## 目录分工（两人分开写，互不覆盖）
-
-```
-solver/mieoemi/    我的实现（YOLO + NCC 双路线）
-solver/partner/   你的实现（自己建文件）
-notes/            公共笔记，文件名带前缀防冲突
-assets/           导出素材（不入库）
-```
-
 ## 结构
 
 ```
@@ -67,9 +58,6 @@ python3 -m venv yolo-env
 国内网络：`PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple`；
 torch CPU wheel 直连 `download.pytorch.org` 可用（约 167MB）。
 
-## 分工
-
-两人各写一份，`solver/` 下按作者命名，互不覆盖。
 
 
 ## 实测记录（2026-11-13，Part 1 · 2×2）
@@ -81,12 +69,4 @@ torch CPU wheel 直连 `download.pytorch.org` 可用（约 167MB）。
 | 滑窗 NCC | 4/4 正确，唯一性 OK，纯 Python 约 21 秒（需向量化提速） |
 | 结论 | 2×2 下两条路线一致；类别匹配必须配颜色兜底 |
 
-### 关键坑（实测）
 
-1. **COCO 覆盖面不足**：熊猫→`bear`、纯白格→`chair`/`bird`，置信度常低于 0.2。
-   纯类别匹配会失败，必须用颜色直方图 + 滑窗 NCC 交叉验证。
-2. **拼图块带透明边**：直接检测会把整块（含白底）当输入，需先按 alpha 裁出可见区域。
-3. **滑窗 NCC 慢**：纯 Python 双重循环 O(n²)，800×600 参考图上 21 秒。
-   提速方向：`cv2.matchTemplate`（TM_CCOEFF_NORMED）或 FFT 互相关，可到毫秒级。
-4. **不要读答案键**：`piece.correctX/correctY` 与 `piece.id` 直接暴露正确位置。
-   本次落子用了 id，属方法论瑕疵；纯识别路线已验证可行，后续应以识别结果直接驱动。
