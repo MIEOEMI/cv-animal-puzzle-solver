@@ -95,14 +95,24 @@ torch CPU wheel 直连 `download.pytorch.org` 可用（约 167MB）。
 ## 全自动（一人一键）
 
 ```bash
-# 一条命令跑完 3 Part × 4 难度，可选录屏
-./yolo-env/bin/python solver/mieoemi/auto_run.py --headless --video --slowmo 80 --out ./runs/demo
+# 默认就是有头模式：会弹出真实浏览器窗口，能看到全过程
+./yolo-env/bin/python solver/mieoemi/auto_run.py --out ./runs/demo
+
+# 只跑指定组合，窗口照样可见
+./yolo-env/bin/python solver/mieoemi/auto_run.py --only 1 --diff 25 --out ./runs/demo
 ```
 
-结果落在 `--out` 目录：`shots/*.png` 每局截图、`video/*.webm` 全程录屏、`RESULTS.md` 总表、`summary.json` 原始数据。
+结果落在 `--out` 目录：`shots/*.png` 每局截图、`RESULTS.md` 总表、`summary.json` 原始数据。
 
-> 录屏需要 ffmpeg。若 Playwright 自带的 ffmpeg 缺失，把系统 ffmpeg 软链过去即可：
-> `ln -sf $(which ffmpeg) /opt/hermes/tools/ffmpeg-1013/ffmpeg-linux`
+| 参数 | 说明 |
+|---|---|
+| （不传） | **有头模式，弹出浏览器窗口**，可实时看到拖拽过程 |
+| `--headless` | 无窗口，仅适合无显示器的服务器 |
+| `--slowmo 60` | 每步放慢毫秒数，让操作看得更清楚 |
+| `--video` | 可选录屏（不需要就别加） |
+
+> 服务器无显示器时可用 `xvfb-run -a ./yolo-env/bin/python ...` 模拟桌面；
+> 若要录屏而 Playwright 缺 ffmpeg，脚本会自动把系统 ffmpeg 软链过去，无需手工处理。
 
 ## 浏览器驱动（可单独调用）
 
