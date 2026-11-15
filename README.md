@@ -91,3 +91,53 @@ torch CPU wheel 直连 `download.pytorch.org` 可用（约 167MB）。
    提速方向：`cv2.matchTemplate`（TM_CCOEFF_NORMED）或 FFT 互相关，可到毫秒级。
 4. **不要读答案键**：`piece.correctX/correctY` 与 `piece.id` 直接暴露正确位置。
    纯形状推理（`edge_solver`）与纯像素匹配（`match_solver`）均已验证可行。
+
+## 全自动（一人一键）
+
+```bash
+# 一条命令跑完 3 Part × 4 难度，可选录屏
+./yolo-env/bin/python solver/mieoemi/auto_run.py --headless --video --slowmo 80 --out ./runs/demo
+```
+
+结果落在 `--out` 目录：`shots/*.png` 每局截图、`video/*.webm` 全程录屏、`RESULTS.md` 总表、`summary.json` 原始数据。
+
+> 录屏需要 ffmpeg。若 Playwright 自带的 ffmpeg 缺失，把系统 ffmpeg 软链过去即可：
+> `ln -sf $(which ffmpeg) /opt/hermes/tools/ffmpeg-1013/ffmpeg-linux`
+
+## 浏览器驱动（可单独调用）
+
+`solver/mieoemi/browser_driver.py` 把**导出素材**和**落子**拆成独立能力，既能 import 也能命令行调：
+
+```python
+from browser_driver import PuzzleDriver
+
+with PuzzleDriver(headless=True) as drv:
+    drv.start(part=1, difficulty=16)     # 开新局
+    info = drv.export("./assets")        # 导出（中性文件名 + perm.json 置换表）
+    # ... 自己调求解器，得到 plan = {"p03": {"row":1,"col":2}, ...}
+    drv.freeze_refs()                    # 固定块对象顺序
+    drv.place_all(plan, perm=info["perm"])   # 落子，返回吸附数
+    print(drv.state())                   # {placed, total, isWon, sec, moves, rows, cols}
+    if not drv.state()["isWon"]:
+        drv.solve_by_elimination()       # 剩余块塞剩余格
+```
+
+命令行三种模式：
+
+```bash
+python browser_driver.py export --part 1 --diff 16 --out ./assets        # 只导出
+python browser_driver.py place  --part 1 --diff 16 --out ./assets --plan ./assets/plan_edges.json  # 只落子
+python browser_driver.py run    --part 1 --diff 16 --out ./assets        # 一条龙
+```
+
+| 方法 | 作用 |
+|---|---|
+| `start(part, difficulty)` | 关弹窗 → 选 Part/难度 → 开新局 |
+| `export(outdir, shuffle=True, seed=None)` | 导出 `p00..pNN.png` + `reference.jpg` + `geom.json` + `perm.json` |
+| `freeze_refs()` | 固定 `window.__refs`，后续按下标定位块对象 |
+| `drag(idx, col, row)` | 拖一块，返回 `(是否吸附, 原始结果)` |
+| `place_all(plan, perm)` | 批量落子，返回吸附成功数 |
+| `state()` | 读 `{placed,total,isWon,sec,moves,rows,cols}` |
+| `solve_by_elimination()` | 剩余块塞剩余格（吸附即正确） |
+| `screenshot(path)` | 截图 |
+| `close_modal()` / `open_page()` | 关胜利弹窗 / 重载页面 |
