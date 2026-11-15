@@ -124,8 +124,14 @@ def open_game(page, part, difficulty, timeout=25000, retries=3):
     raise RuntimeError(f"开新局失败：Part {part} · {difficulty} 块")
 
 
-def export_assets(page, outdir, shuffle_names=False):
-    """导出拼图块 + 参考图 + 几何到磁盘。返回 board 字典。"""
+def export_assets(page, outdir, shuffle_names=False, seed=12345):
+    """导出拼图块 + 参考图 + 几何到磁盘。返回 board 字典。
+
+    shuffle_names=True 时，文件名与块的数组顺序脱钩，并写出 perm.json 记录
+    "文件名 -> 原数组下标"。用途：页面 board.pieces 的数组顺序恰好等于正确位置顺序，
+    不打乱的话"按序号落子"就能通关，会得到假的通过率。
+    """
+    import random as _random
     out = Path(outdir)
     out.mkdir(parents=True, exist_ok=True)
 
@@ -141,10 +147,18 @@ def export_assets(page, outdir, shuffle_names=False):
     (out / "reference.jpg").write_bytes(
         base64.b64decode(board["ref"].split(",", 1)[1]))
 
-    for i, data_url in enumerate(board["pieces"]):
-        raw = data_url.split(",", 1)[1]          # 去掉 "data:image/png;base64,"
-        name = f"p{i:02d}.png" if not shuffle_names else f"p{_shuffled(i, board['n']):02d}.png"
-        (out / name).write_bytes(base64.b64decode(raw))
+    n = board["n"]
+    order = list(range(n))
+    if shuffle_names:
+        _random.Random(seed).shuffle(order)      # order[file_idx] = 原数组下标
+
+    for file_idx, piece_idx in enumerate(order):
+        raw = board["pieces"][piece_idx].split(",", 1)[1]   # 去掉 data:image/png;base64,
+        (out / f"p{file_idx:02d}.png").write_bytes(base64.b64decode(raw))
+
+    # perm["pNN"] = 原数组下标（= __tag）
+    (out / "perm.json").write_text(json.dumps(
+        {f"p{i:02d}": piece_idx for i, piece_idx in enumerate(order)}, indent=1))
 
     return board
 
@@ -232,6 +246,193 @@ def place(page, plan, delay=0.12, retry=1):
             print(f"  [warn] tag={tag} 放到 ({cell['row']},{cell['col']}) 未吸附")
 
     return snapped
+
+
+# ------------------------------------------------------------------ 高层入口
+# 主人只需要写一个 solve(assets_dir) -> plan，其余全部由下面两个函数包办。
+
+def normalize_plan(plan):
+    """把求解器返回的各种写法统一成 {int tag: {row, col}}。
+
+    支持 {"p03": {"row":1,"col":2}}、{3: {...}}、"0": {...}（JS 键是字符串）
+    """
+    out = {}
+    for k, v in plan.items():
+        s = str(k)
+        if s.startswith("p"):
+            s = s[1:]
+        s = s.split(".")[0]
+        if not s.lstrip("-").isdigit():
+            continue
+        out[int(s)] = {"row": int(v["row"]), "col": int(v["col"])}
+    return out
+
+
+def run_round(part, difficulty, solve, headless=False, outdir=None,
+              browser=None, page=None, fallback=True, verbose=True,
+              shuffle_names=False, seed=12345):
+    """跑一关：开局 → 导出 → 调你的 solve() → 落子 →（可选）兜底。
+
+    参数
+    ----
+    part, difficulty : 1/2/3 与 4/9/16/25
+    solve            : callable(assets_dir: pathlib.Path) -> dict
+                       返回 {tag: {"row": r, "col": c}}，tag 是块序号（= 导出文件名 pNN 的 NN）
+    headless         : False 会弹出可见的浏览器窗口
+    outdir           : 素材与截图输出目录；None 则自动 runs/<时间戳>_pX_dY
+    browser, page    : 传入已打开的实例可复用窗口（批量跑时用，避免反复启动）
+    fallback         : 首次落子没拼完时，用"剩余块塞剩余格"补齐（不读答案键）
+
+    返回
+    ----
+    dict: {tag, part, difficulty, n, theme, snapped, first_try_snapped,
+           placed, total, isWon, sec, moves, assets, screenshot}
+    """
+    from playwright.sync_api import sync_playwright
+
+    tag = f"p{part}_d{difficulty}"
+    root = Path(outdir) if outdir else (
+        Path(__file__).resolve().parent / "runs" / f"{time.strftime('%Y%m%d_%H%M%S')}_{tag}")
+    assets = root / "assets"
+    assets.mkdir(parents=True, exist_ok=True)
+    root.mkdir(parents=True, exist_ok=True)
+
+    own_browser = browser is None
+    ctx_pw = None
+    if own_browser:
+        ctx_pw = sync_playwright().start()
+        browser = ctx_pw.chromium.launch(channel="chrome", headless=headless,
+                                         args=["--no-sandbox", "--disable-dev-shm-usage"])
+    try:
+        pg = page or browser.new_page(viewport={"width": 1400, "height": 900})
+        open_game(pg, part=part, difficulty=difficulty)
+        board = export_assets(pg, assets, shuffle_names=shuffle_names, seed=seed)
+        tag_pieces(pg)
+
+        if verbose:
+            print(f"[{tag}] 已导出 {board['n']} 块, {board['rows']}x{board['cols']}, "
+                  f"主题={board['theme']} → {assets}")
+
+        plan = normalize_plan(solve(assets))
+        if shuffle_names:
+            # solve() 返回的键是文件名序号，映射回块的 __tag
+            perm = json.loads((assets / "perm.json").read_text())
+            plan = {int(perm[f"p{k:02d}"]): v for k, v in plan.items()
+                    if f"p{k:02d}" in perm}
+        if verbose:
+            print(f"[{tag}] solve() 返回 {len(plan)} 个位置，开始落子…")
+
+        snapped = place(pg, plan)
+        st = state(pg)
+        rec = {"tag": tag, "part": part, "difficulty": difficulty, "n": board["n"],
+               "theme": board["theme"], "snapped": snapped,
+               "first_try_snapped": snapped, **st,
+               "assets": str(assets)}
+
+        if fallback and not st["isWon"]:
+            if verbose:
+                print(f"[{tag}] 首次 {snapped}/{board['n']}，走兜底补齐…")
+            fin = _eliminate(pg)
+            # 注意：isWon / placed 保持"算法单独的成绩"，兜底结果放到 *_final。
+            # 否则算法错了也会显示通关，看不出真实水平。
+            rec["after_fallback"] = fin
+            rec["placed_final"] = fin["placed"]
+            rec["isWon_final"] = fin["isWon"]
+
+        shot = root / f"{tag}.png"
+        try:
+            pg.screenshot(path=str(shot))
+            rec["screenshot"] = str(shot)
+        except Exception:
+            pass
+
+        if verbose:
+            mark = "✅" if rec["isWon"] else "❌"
+            extra = ""
+            if "isWon_final" in rec:
+                extra = f" | 兜底后 {rec['placed_final']}/{rec['total']}"
+            print(f"[{tag}] {mark} 算法吸附 {snapped}/{board['n']} | "
+                  f"placed={rec['placed']}/{rec['total']} | 页面 {rec['sec']}s{extra}")
+        return rec
+    finally:
+        if own_browser:
+            try:
+                browser.close()
+            finally:
+                if ctx_pw is not None:
+                    ctx_pw.stop()
+
+
+def _eliminate(pg, delay=0.08):
+    """剩余块塞剩余格。页面只在位置正确时吸附，所以"试"本身就是判据。"""
+    st = pg.evaluate("""() => {
+      const b = window.app.board, empty = [];
+      for (let r = 0; r < b.rows; r++) for (let c = 0; c < b.cols; c++)
+        if (!b.pieces.some(p => p.isPlaced && p.row === r && p.col === c)) empty.push([r, c]);
+      const un = [];
+      b.pieces.forEach(p => { if (!p.isPlaced) un.push(p.__tag); });
+      return JSON.stringify({empty, un});
+    }""")
+    st = json.loads(st)
+    done = []
+    for t in st["un"]:
+        for (r, c) in st["empty"]:
+            if [r, c] in done:
+                continue
+            info = pg.evaluate(BRING_TO_TOP_JS, t)
+            if info is None or info["isPlaced"]:
+                break
+            geo = pg.evaluate(BOARD_GEO_JS)
+            tcx = geo["bx"] + c * geo["pw"] + geo["pw"] / 2
+            tcy = geo["by"] + r * geo["ph"] + geo["ph"] / 2
+            sx = geo["left"] + (info["x"] + geo["pw"] / 2) / geo["kx"]
+            sy = geo["top"] + (info["y"] + geo["ph"] / 2) / geo["kb_y"]
+            tx = geo["left"] + tcx / geo["kx"]
+            ty = geo["top"] + tcy / geo["kb_y"]
+            pg.mouse.move(sx, sy); pg.mouse.down()
+            pg.mouse.move(tx, ty, steps=8); pg.mouse.up()
+            time.sleep(delay)
+            if pg.evaluate("""(t) => { const p = window.app.board.pieces.find(x => x.__tag === t);
+                                    return !!p && !!p.isPlaced; }""", t):
+                done.append([r, c])
+                break
+    return state(pg)
+
+
+def run_all(solve, parts=(1, 2, 3), diffs=(4, 9, 16, 25),
+            headless=False, pause=5, outroot=None, fallback=True,
+            shuffle_names=False):
+    """批量跑多关（一个浏览器窗口跑到底，关间隔 pause 秒）。"""
+    from playwright.sync_api import sync_playwright
+
+    root = Path(outroot) if outroot else (
+        Path(__file__).resolve().parent / "runs" / time.strftime("%Y%m%d_%H%M%S"))
+    root.mkdir(parents=True, exist_ok=True)
+
+    recs = []
+    with sync_playwright() as p:
+        br = p.chromium.launch(channel="chrome", headless=headless,
+                               args=["--no-sandbox", "--disable-dev-shm-usage"])
+        page = br.new_page(viewport={"width": 1400, "height": 900})
+        combos = [(pt, d) for pt in parts for d in diffs]
+        for i, (pt, d) in enumerate(combos):
+            rec = run_round(pt, d, solve, headless=headless,
+                            outdir=root / f"p{pt}_d{d}", browser=br, page=page,
+                            fallback=fallback, shuffle_names=shuffle_names)
+            recs.append(rec)
+            (root / "summary.json").write_text(
+                json.dumps(recs, indent=1, ensure_ascii=False))
+            if i < len(combos) - 1 and pause:
+                print(f"  休息 {pause}s…", flush=True)
+                time.sleep(pause)
+        br.close()
+
+    wins = sum(1 for r in recs if r.get("isWon"))
+    wins_final = sum(1 for r in recs if r.get("isWon_final", r.get("isWon")))
+    perfect = sum(1 for r in recs if r.get("snapped") == r.get("n"))
+    print(f"\n算法一次全中 {perfect}/{len(recs)} | 算法独立通关 {wins}/{len(recs)} "
+          f"| 兜底后通关 {wins_final}/{len(recs)}")
+    return recs
 
 
 # ------------------------------------------------------------------ 自测
