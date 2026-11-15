@@ -9,6 +9,20 @@ RoboMaster 队内 CV 练习：自动解 `cv-animal-puzzle` 拼图。
 - **Part 2 · Pure White Shapes** —— 核心方法 OpenCV：纯轮廓/直边/凹凸齿匹配
 - **Part 3 · Mixed** —— 两者结合
 
+## 战果
+
+3 Part × 4 难度 = **12/12 全部通关**，每块一次吸附到位，单局 2–4 秒。
+明细见 [`solver/mieoemi/RESULTS.md`](solver/mieoemi/RESULTS.md)。
+
+## 目录分工（两人分开写，互不覆盖）
+
+```
+solver/mieoemi/    我的实现
+solver/<你的目录>/ 你的实现（名称你定）
+notes/            公共笔记，文件名带前缀防冲突
+assets/           导出素材（不入库）
+```
+
 ## 结构
 
 ```
@@ -70,3 +84,10 @@ torch CPU wheel 直连 `download.pytorch.org` 可用（约 167MB）。
 | 结论 | 2×2 下两条路线一致；类别匹配必须配颜色兜底 |
 
 
+1. **COCO 覆盖面不足**：熊猫→`bear`、纯白格→`chair`/`bird`，置信度常低于 0.2。
+   纯类别匹配会失败，必须用颜色直方图 + 滑窗 NCC 交叉验证。
+2. **拼图块带透明边**：直接检测会把整块（含白底）当输入，需先按 alpha 裁出可见区域。
+3. **滑窗 NCC 慢**：纯 Python 双重循环 O(n²)，800×600 参考图上 21 秒。
+   提速方向：`cv2.matchTemplate`（TM_CCOEFF_NORMED）或 FFT 互相关，可到毫秒级。
+4. **不要读答案键**：`piece.correctX/correctY` 与 `piece.id` 直接暴露正确位置。
+   纯形状推理（`edge_solver`）与纯像素匹配（`match_solver`）均已验证可行。
