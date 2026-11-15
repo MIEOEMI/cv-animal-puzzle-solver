@@ -112,13 +112,14 @@ def norm_plan(path):
 
 def solve_assets(assets: Path, theme: str):
     """跑求解器，返回 (plan_pNN, solver_name)。white/mixed 先边齿，photo 先模板匹配。"""
-    order = (["edge_solver.py", "match_solver.py"] if theme != "photo"
-             else ["match_solver.py", "edge_solver.py"])
+    # hybrid 先跑（边齿约束 + 像素排序），失败再退到单一边齿
+    order = ["hybrid_solver.py", "edge_solver.py"]
     best, used = {}, None
     for s in order:
         subprocess.run([PY, str(HERE / s), "--assets", str(assets)],
                        capture_output=True, text=True, timeout=900, env=ENV)
-        pj = "plan.json" if "match" in s else "plan_edges.json"
+        pj = {"hybrid_solver.py": "plan_hybrid.json",
+              "edge_solver.py": "plan_edges.json"}.get(s, "plan.json")
         cand = norm_plan(assets / pj)
         if len(cand) > len(best):
             best, used = cand, s
