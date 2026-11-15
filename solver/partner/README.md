@@ -1,4 +1,4 @@
-# partner —— 浏览器侧实现
+# 采用mieoemi给的浏览器导出方案
 
 ## 文件
 
@@ -68,3 +68,16 @@ with sync_playwright() as p:
 
 求解器（从图像算出 `plan`）。目前 `plan` 只能靠 `correctX/correctY`，
 真正解题要自己实现形状/内容匹配。
+
+---
+
+## 待修的三个问题（review 2026-11-15）
+
+见 `brower_use_own.py`：
+
+1. `export_assets` 里 `page.locator("#exam-reference").screenshot(...)` —— **该选择器不存在**（实测 `count=0`），会直接抛错。
+   正确做法：参考图用 `document.getElementById('preview-img').src`（data URL，原始 800×600），
+   而不是截图——`#preview-img` 在页面上只显示 330×600，截图会失真。
+2. `open_and_start` 用递归重试，没有次数上限，极端情况会无限递归。建议改成 `for` 循环 + 最多 3 次。
+3. `place(page, plan)` 还是空的 `...` —— 已提供可用的 `place.py`，直接 `from place import place` 即可，
+   或把 `place.py` 里 `place()` 的函数体抄进去。
