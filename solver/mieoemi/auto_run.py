@@ -100,6 +100,36 @@ EMPTY_JS = """() => {
 }"""
 
 
+def parse_pause(spec):
+    """'30' -> 固定 30s；'20-45' -> 区间内随机。返回 (min, max)。"""
+    s = str(spec).strip().replace("~", "-").replace("－", "-")
+    if "-" in s:
+        lo, hi = s.split("-", 1)
+        lo, hi = float(lo), float(hi)
+    else:
+        lo = hi = float(s)
+    if lo > hi:
+        lo, hi = hi, lo
+    return lo, hi
+
+
+def wait_between(lo, hi, label=""):
+    """关与关之间的等待，带倒计时输出。返回实际等待秒数。"""
+    if hi <= 0:
+        return 0.0
+    secs = random.uniform(lo, hi)
+    total = max(0.0, secs)
+    print(f"\n⏸  本关已完成，休息 {total:.0f}s 后再开下一关"
+          f"{('（' + label + '）') if label else ''}", flush=True)
+    left = total
+    while left > 0.05:
+        tick = min(5.0, left)
+        left -= tick
+        print(f"   倒计时 {left:.0f}s", flush=True)
+        time.sleep(tick)
+    return total
+
+
 def norm_plan(path):
     """把求解器输出统一成 pNN -> {row,col}。"""
     if not os.path.exists(path):
@@ -206,6 +236,8 @@ def main():
     ap.add_argument("--diff", default="4,9,16,25")
     ap.add_argument("--out", default=None)
     ap.add_argument("--seed", type=int, default=None)
+    ap.add_argument("--pause", default="30",
+                    help="每关之间的等待秒数，支持区间如 20-45（默认 30）；0 表示不留间隔")
     ap.add_argument("--video", action="store_true", help="录屏（WebM），便于回看浏览器操作过程")
     ap.add_argument("--slowmo", type=int, default=0, help="每步放慢毫秒数，便于肉眼观察")
     a = ap.parse_args()
@@ -236,24 +268,37 @@ def main():
         page.wait_for_function("() => window.app && typeof window.app === 'object'", timeout=30000)
         print(f"页面就绪: {page.title()}")
 
+        lo, hi = parse_pause(a.pause)
+        combos = [(p, d) for p in parts for d in diffs]
+
+        def dump_summary():
+            (root / "summary.json").write_text(
+                json.dumps(recs, indent=1, ensure_ascii=False))
+
         recs = []
-        for part in parts:
-            for diff in diffs:
-                t0 = time.time()
-                rec = run_one(page, part, diff, outdir, shots, seed=a.seed)
-                rec["wall_sec"] = round(time.time() - t0, 2)
-                # 最终状态以兜底后为准
-                fin = rec.get("after_fallback", rec)
-                rec["final_placed"] = fin["placed"]
-                rec["final_won"] = fin["isWon"]
-                recs.append(rec)
-                (root / "summary.json").write_text(
-                    json.dumps(recs, indent=1, ensure_ascii=False))
-                mark = "✅" if rec["final_won"] else "❌"
-                print(f"{mark} {rec['tag']:8s} {rec['theme']:8s} n={rec['n']:>2} "
-                      f"solver={rec['solver'] or '-':16s} "
-                      f"吸附 {rec['first_try_snapped']}/{rec['n']} "
-                      f"页面 {rec['sec']}s 总耗时 {rec['wall_sec']}s")
+        for i, (part, diff) in enumerate(combos):
+            t0 = time.time()
+            rec = run_one(page, part, diff, outdir, shots, seed=a.seed)
+            rec["wall_sec"] = round(time.time() - t0, 2)
+            # 最终状态以兜底后为准
+            fin = rec.get("after_fallback", rec)
+            rec["final_placed"] = fin["placed"]
+            rec["final_won"] = fin["isWon"]
+            recs.append(rec)
+            dump_summary()
+
+            mark = "✅" if rec["final_won"] else "❌"
+            print(f"{mark} [{i + 1}/{len(combos)}] {rec['tag']:8s} {rec['theme']:8s} "
+                  f"n={rec['n']:>2} solver={rec['solver'] or '-':16s} "
+                  f"吸附 {rec['first_try_snapped']}/{rec['n']} "
+                  f"页面 {rec['sec']}s 总耗时 {rec['wall_sec']}s", flush=True)
+
+            # 一关一关来：这局完成后再等一段时间，才开下一关
+            if i < len(combos) - 1:
+                nxt = combos[i + 1]
+                rec["pause_after"] = round(
+                    wait_between(lo, hi, f"下一关 Part {nxt[0]} · {nxt[1]} 块"), 1)
+                dump_summary()
 
         # 总表
         wins = sum(1 for r in recs if r.get("final_won"))
