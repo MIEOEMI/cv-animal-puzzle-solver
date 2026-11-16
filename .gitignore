@@ -5,3 +5,4 @@ yolo-env/
 __pycache__/
 *.pt
 *.onnx
+solver/mieoemi/runs/
