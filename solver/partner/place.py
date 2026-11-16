@@ -204,10 +204,13 @@ def place(page, plan, delay=0.12, retry=1):
                 geo["top"] + canvas_y / geo["kb_y"])
 
     snapped = 0
-    for raw_tag, cell in plan.items():
-        # ⚠️ JS 对象的键永远是字符串，从页面拿回来的 plan 键是 "0"/"1"，
-        #    而 p.__tag 是数字。不转成 int 就会 0 === "0" 恒为假，一块都抓不到。
-        tag = int(raw_tag) if str(raw_tag).lstrip("-").isdigit() else raw_tag
+    for tag, cell in plan.items():
+        # 这里只接受 int 键（run_round 已用 validate_plan 卡过格式）。
+        # 提醒：JS 对象的键永远是字符串，从页面 evaluate 拿回的 dict 键是 "0"/"1"，
+        # 那种情况必须自己转成 int，否则 p.__tag === "0" 恒为假，一块都抓不到。
+        if not isinstance(tag, int):
+            raise PlanError(f"plan 的键必须是 int，实际是 {tag!r}；"
+                            f"如果是从页面 evaluate 拿的 dict，请先 {{int(k): v ...}}")
         for attempt in range(retry + 1):
             # 1) 把这块提到最上层，拿到它当前位置（避免被别的块压住抓错）
             info = page.evaluate(BRING_TO_TOP_JS, tag)
@@ -251,21 +254,65 @@ def place(page, plan, delay=0.12, retry=1):
 # ------------------------------------------------------------------ 高层入口
 # 主人只需要写一个 solve(assets_dir) -> plan，其余全部由下面两个函数包办。
 
-def normalize_plan(plan):
-    """把求解器返回的各种写法统一成 {int tag: {row, col}}。
+class PlanError(ValueError):
+    """solve() 返回的 plan 格式不对。"""
 
-    支持 {"p03": {"row":1,"col":2}}、{3: {...}}、"0": {...}（JS 键是字符串）
+
+def validate_plan(plan, n=None, rows=None, cols=None):
+    """严格校验 solve() 的返回值。格式不对立刻报错，不做猜测性兼容。
+
+    唯一合法格式：
+        {块序号(int): {"row": int, "col": int}}
+        - 块序号 = 文件名 pNN 里的 NN（0..n-1，导出顺序）
+        - row / col 从 0 开始，且必须是 int（不能是 str 或 float）
+
+    额外校验（给了参数才查）：
+        n     完整性：必须恰好 0..n-1 各出现一次
+        rows  行号范围 0 <= row < rows
+        cols  列号范围 0 <= col < cols
+        另查：两个块不能指向同一个格子
+
+    返回校验后的 plan（原样通过，方便链式使用）。
     """
-    out = {}
+    if not isinstance(plan, dict):
+        raise PlanError(f"solve() 必须返回 dict，实际返回 {type(plan).__name__}")
+
     for k, v in plan.items():
-        s = str(k)
-        if s.startswith("p"):
-            s = s[1:]
-        s = s.split(".")[0]
-        if not s.lstrip("-").isdigit():
-            continue
-        out[int(s)] = {"row": int(v["row"]), "col": int(v["col"])}
-    return out
+        if not isinstance(k, int) or isinstance(k, bool):
+            raise PlanError(
+                f"键必须是 int 块序号，实际是 {k!r}（{type(k).__name__}）。"
+                f"请返回 {{0: {{'row':0,'col':0}}, ...}}，不要用 'p00' 或 '0'")
+        if not isinstance(v, dict):
+            raise PlanError(f"块 {k} 的值必须是 dict，实际是 {type(v).__name__}（{v!r}）")
+        for axis in ("row", "col"):
+            if axis not in v:
+                raise PlanError(f"块 {k} 缺少键 {axis!r}，实际有 {list(v)}")
+            val = v[axis]
+            if not isinstance(val, int) or isinstance(val, bool):
+                raise PlanError(
+                    f"块 {k} 的 {axis} 必须是 int，实际是 {val!r}（{type(val).__name__}）")
+
+    if n is not None:
+        missing = sorted(set(range(n)) - set(plan))
+        extra = sorted(set(plan) - set(range(n)))
+        if missing:
+            raise PlanError(f"缺少这些块的落点：{missing}（共 {n} 块）")
+        if extra:
+            raise PlanError(f"多出这些块序号：{extra}（有效范围 0..{n - 1}）")
+
+    cells = [(v["row"], v["col"]) for v in plan.values()]
+    dup = {c for c in cells if cells.count(c) > 1}
+    if dup:
+        raise PlanError(f"多个块指向同一格：{sorted(dup)}")
+
+    if rows is not None or cols is not None:
+        for k, v in plan.items():
+            if rows is not None and not (0 <= v["row"] < rows):
+                raise PlanError(f"块 {k} 的行号 {v['row']} 越界（应为 0..{rows - 1}）")
+            if cols is not None and not (0 <= v["col"] < cols):
+                raise PlanError(f"块 {k} 的列号 {v['col']} 越界（应为 0..{cols - 1}）")
+
+    return plan
 
 
 def run_round(part, difficulty, solve, headless=False, outdir=None,
@@ -313,12 +360,13 @@ def run_round(part, difficulty, solve, headless=False, outdir=None,
             print(f"[{tag}] 已导出 {board['n']} 块, {board['rows']}x{board['cols']}, "
                   f"主题={board['theme']} → {assets}")
 
-        plan = normalize_plan(solve(assets))
+        # 严格校验：格式不对直接抛 PlanError，不做猜测性兼容
+        plan = validate_plan(solve(assets), n=board["n"],
+                             rows=board["rows"], cols=board["cols"])
         if shuffle_names:
             # solve() 返回的键是文件名序号，映射回块的 __tag
             perm = json.loads((assets / "perm.json").read_text())
-            plan = {int(perm[f"p{k:02d}"]): v for k, v in plan.items()
-                    if f"p{k:02d}" in perm}
+            plan = {int(perm[f"p{k:02d}"]): v for k, v in plan.items()}
         if verbose:
             print(f"[{tag}] solve() 返回 {len(plan)} 个位置，开始落子…")
 

@@ -94,11 +94,30 @@ rec = P.run_round(2, 4, solve, shuffle_names=True)   # 推荐
 | `reference.jpg` | 参考图整图 |
 | `p00.png … pNN.png` | 每块拼图（RGBA、透明背景、带凸齿/凹槽） |
 
-**输出**：`{块序号: {"row": r, "col": c}}`
+**输出**（只有这一种合法格式）：
 
-- 块序号 = 文件名 `pNN` 里的 `NN`（整数）
-- 键写成 `"p03"`、`"3"`、`3` 都能识别，内部自动统一
-- `row` 从 0 开始，`col` 从 0 开始
+```python
+{
+    0: {"row": 0, "col": 0},
+    1: {"row": 0, "col": 1},
+    # ... 共 N 块
+}
+```
+
+- 键必须是 **int**，就是文件名 `pNN` 里的 `NN`
+- `row` / `col` 必须是 **int**，从 0 开始
+- 必须给全 N 块，且不能两块指向同一格
+
+格式不对会直接抛 `PlanError`，并在错误信息里说明哪里错了、应该怎么改。
+例如 `{"p00": {...}}` 会报：
+
+```
+PlanError: 键必须是 int 块序号，实际是 'p00'（str）。
+请返回 {0: {'row':0,'col':0}, ...}，不要用 'p00' 或 '0'
+```
+
+> 不做猜测性兼容是刻意的：静默纠正会让"算法算错"和"格式写错"混在一起，
+> 出了问题很难定位。
 
 ## 单独使用的底层函数
 
@@ -111,7 +130,7 @@ rec = P.run_round(2, 4, solve, shuffle_names=True)   # 推荐
 | `tag_pieces(page)` | 给每块绑定 `__tag` 作为稳定身份 |
 | `place(page, plan)` | 按 `{tag: {row, col}}` 逐块拖拽，返回吸附数 |
 | `state(page)` | 读 `{placed, total, isWon, moves, sec}` |
-| `normalize_plan(plan)` | 把各种写法统一成 `{int: {row, col}}` |
+| `validate_plan(plan, n, rows, cols)` | 严格校验格式/完整性/越界/重复，不合格抛 `PlanError` |
 
 ## 已验证
 
