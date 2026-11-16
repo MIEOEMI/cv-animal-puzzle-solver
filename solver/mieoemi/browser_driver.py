@@ -121,7 +121,7 @@ _JS_READY = """(diff) => {
 
 
 # ---------------------------------------------------------------- 录屏依赖
-"""
+
 def ensure_ffmpeg(verbose=True):
     #确保 Playwright 录屏所需的 ffmpeg 存在；缺了就软链系统 ffmpeg。
 
@@ -174,7 +174,7 @@ def ensure_ffmpeg(verbose=True):
         if verbose:
             print(f"[warn] 软链 ffmpeg 失败: {e}")
         return None
-"""
+
 
 # ---------------------------------------------------------------- 驱动类
 

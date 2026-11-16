@@ -1,0 +1,24 @@
+[
+ {
+  "tag": "p1_d4",
+  "part": 1,
+  "difficulty": 4,
+  "theme": "animals",
+  "n": 4,
+  "solver": "hybrid_solver.py",
+  "plan_size": 4,
+  "first_try_snapped": 4,
+  "placed": 4,
+  "total": 4,
+  "isWon": true,
+  "sec": 7,
+  "moves": 4,
+  "rows": 2,
+  "cols": 2,
+  "screenshot": "/home/ubuntu/project/cv-animal-puzzle-solver/solver/mieoemi/runs/20261116_104330/shots/p1_d4.png",
+  "wall_sec": 8.21,
+  "final_placed": 4,
+  "final_won": true,
+  "pause_after": 5.0
+ }
+]

@@ -1,12 +1,3 @@
-"""求解器模板 —— 主人只需要填 solve() 这一个函数。
-
-浏览器操作（开局/导出/落子/兜底）全部由 place.py 包办，这里只管"看图算位置"。
-
-运行：
-    python solve_template.py              # 只跑 Part2 的 4 块，弹窗口
-    python solve_template.py --part 1 --diff 25
-    python solve_template.py --all        # 12 关全跑，每关间隔 5 秒
-"""
 import argparse
 import json
 from pathlib import Path
